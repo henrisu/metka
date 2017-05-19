@@ -28,8 +28,7 @@
 
 package fi.uta.fsd.metka.ddi.builder;
 
-import codebook25.CodeBookType;
-import codebook25.SimpleTextAndDateType;
+import codebook25.*;
 import fi.uta.fsd.metka.enums.Language;
 import fi.uta.fsd.metka.enums.ReferenceType;
 import fi.uta.fsd.metka.model.access.calls.ContainerDataFieldCall;
@@ -47,13 +46,24 @@ import fi.uta.fsd.metka.storage.repository.RevisionRepository;
 import fi.uta.fsd.metka.transfer.reference.ReferenceOption;
 import fi.uta.fsd.metka.transfer.reference.ReferencePath;
 import fi.uta.fsd.metka.transfer.reference.ReferencePathRequest;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.xmlbeans.XmlCursor;
-import org.apache.xmlbeans.XmlObject;
+import org.apache.xmlbeans.*;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.NodeVisitor;
+import org.w3.x1999.xhtml.*;
+import org.w3.x1999.xhtml.DivType;
+import org.w3.x1999.xhtml.PType;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 abstract class DDIWriteSectionBase {
@@ -192,10 +202,56 @@ abstract class DDIWriteSectionBase {
         return fillTextType(att, value != null ? value.getActualValue() : "");
     }
 
+    protected <T extends SimpleTextType> T fillSimpleTextType(T stt, String value) {
+        XmlOptions options = new XmlOptions();
+        options.setDocumentType(stt.schemaType());
+        Document doc = Jsoup.parse(value);
+        doc.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
+
+        for(Node child : doc.body().childNodes()) {
+            child.traverse(new DDIXhtmlNodeVisitor(stt));
+        }
+
+        return stt;
+    }
+
     protected <T extends XmlObject> T fillTextType(T att, String value) {
-        XmlCursor xmlCursor = att.newCursor();
-        xmlCursor.setTextValue(value);
-        xmlCursor.dispose();
+
+
+        if (att instanceof SimpleTextType) {
+            fillSimpleTextType((SimpleTextType) att,value);
+        } else {
+            System.out.println("not simpletexttype");
+        }
+       /* XmlOptions options = new XmlOptions();
+       //This implementation includes unwanted empty namespaces in the xml.
+        options.setDocumentType(att.schemaType());
+        Document doc = Jsoup.parse(value);
+        doc.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
+
+        XmlCursor writeCursor = att.newCursor();
+        writeCursor.toEndToken();
+        try {
+            for(Node child : doc.body().childNodes()) {
+                if (child instanceof TextNode) {
+                    writeCursor.toEndToken();
+                    writeCursor.insertChars(value);
+                } else if (child instanceof Element) {
+
+                    SimpleTextType stt = SimpleTextType.Factory.parse((child).toString());
+                    XmlCursor readCursor = stt.newCursor();
+                    readCursor.moveXmlContents(writeCursor);
+                    readCursor.dispose();
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("failed");
+            System.out.println(e);
+        }
+
+        writeCursor.dispose();
+        return att;*/
+
         return att;
     }
 
